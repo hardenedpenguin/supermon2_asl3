@@ -1,0 +1,82 @@
+/* astlookup.css - White on Black Theme */
+
+/* --- Body Styles --- */
+body {
+    background-color: black;
+    color: white;
+    font-size: 20px;
+    font-family: "Courier New", Courier, monospace;
+    text-align: left;
+    line-height: 1.5;
+    margin: 15px;
+    padding: 0;
+}
+
+/* --- Link Styles --- */
+a {
+    color: #87CEFA; /* LightSkyBlue */
+    text-decoration: underline;
+}
+
+a:visited {
+    color: #ADD8E6; /* LightBlue */
+}
+
+a:hover,
+a:focus {
+    color: #FFFFFF; /* White */
+    text-decoration: none;
+}
+
+/* --- Main Page Heading (H1) Styles --- */
+h1 {
+    color: #FFA500; /* Orange */
+    border-bottom: 1px solid #FFA500; /* Orange border */
+    margin-top: 0;
+    margin-bottom: 1em;
+    padding-bottom: 0.3em;
+    font-size: 1.5em;
+}
+
+/* --- Section Header (.lookup-header) Styles --- */
+.lookup-header {
+    color: #00FF00; /* Lime green */
+    border-bottom: 1px dashed #555;
+    margin-top: 1.5em;
+    margin-bottom: 0.8em;
+    padding-bottom: 0.2em;
+    font-weight: bold;
+}
+
+/* --- General Paragraph and List Styles --- */
+p, li {
+    margin-bottom: 0.8em;
+}
+
+ul {
+    padding-left: 30px;
+    list-style-type: square;
+}
+
+/* --- Lookup Result Block (.lookup-result) Styles --- */
+.lookup-result {
+    margin-left: 1em;
+    padding: 5px 0;
+}
+
+/* --- Labels within Lookup Results (.lookup-result strong) Styles --- */
+.lookup-result strong {
+    color: #FFFF00; /* Yellow */
+    font-weight: normal;
+    margin-right: 0.5em;
+}
+
+/* --- Error Message (.error) Styles --- */
+.error {
+    color: #FF4444; /* Bright red text */
+    font-weight: bold;
+    border: 1px solid #FF4444;
+    padding: 10px 15px;
+    background-color: #330000; /* Dark red background */
+    margin: 15px 0;
+}

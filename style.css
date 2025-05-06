@@ -1,0 +1,401 @@
+/* --- Base Styles --- */
+*, *::before, *::after {
+    box-sizing: border-box; /* Apply box-sizing globally */
+}
+
+html, body {
+    background-color: powderblue;
+    color: black;
+    font-size: 12px; /* Base font size for better readability */
+    font-family: Verdana, sans-serif; /* Added sans-serif fallback */
+    text-align: left;
+    margin: 0;
+    padding: 0;
+    line-height: 1.5; /* Default line spacing */
+    -webkit-text-size-adjust: 100%; /* Prevent iOS font size adjustments */
+}
+
+/* --- General Element Styling --- */
+a {
+    color: #000080; /* Navy link color */
+    text-decoration: none; /* No underline by default */
+}
+a:hover {
+    text-decoration: underline;
+}
+
+hr.button-separator { /* Style for the separator in the connect form */
+    border: none;
+    height: 1px;
+    background-color: #555; /* Dark gray line */
+    margin: 15px 5%; /* Add some vertical and horizontal margin */
+    width: 90%; /* Don't let it span full width */
+}
+
+input[type="button"],
+input[type="submit"],
+select {
+    padding: 8px 12px;
+    margin: 4px;
+    cursor: pointer;
+    border-radius: 4px;
+    border: 1px solid #888; /* Slightly darker border */
+    font-size: 1em; /* Use relative font size */
+    font-family: inherit;
+    vertical-align: middle; /* Align nicely with text/other inputs */
+    background-color: #e0e0e0; /* Light gray background */
+    color: black;
+}
+input[type="button"]:hover,
+input[type="submit"]:hover {
+    background-color: #d0d0d0; /* Slightly darker on hover */
+}
+input[type="text"] {
+    padding: 8px 10px;
+    border-radius: 4px;
+    border: 1px solid #888;
+    font-size: 1em;
+    font-family: inherit;
+    vertical-align: middle;
+}
+
+/* Common button classes */
+.submit-large { padding: 10px 15px; font-size: 1.1em; }
+.submit { /* Base style, can add specifics */ }
+.submitter { /* Base style, can add specifics */ }
+.text-normal { font-size: 1em; } /* Example for TEXT_SIZE */
+.text-large { font-size: 1.15em; } /* Example for TEXT_SIZE */
+.text-small { font-size: 0.9em; } /* Example for TEXT_SIZE */
+
+
+/* --- Welcome Messages --- */
+.welcome-message {
+    padding: 12px 15px;
+    text-align: center;
+    margin: 10px auto; /* Center block */
+    border: 1px solid; /* Border color set below */
+    border-radius: 5px;
+    max-width: 95%; /* Limit width */
+    font-weight: bold;
+}
+.welcome-message.not-logged-in {
+    background-color: #f8d7da; /* Light red */
+    color: #721c24;
+    border-color: #f5c6cb;
+}
+.welcome-message.logged-in {
+    background-color: #d4edda; /* Light green */
+    color: #155724;
+    border-color: #c3e6cb;
+}
+
+
+/* --- Connect Form (#connect_form) --- */
+#connect_form {
+    padding: 15px;
+    background-color: black;
+    border-radius: 10px;
+    margin: 15px auto; /* Center block */
+    max-width: 95%; /* Limit width */
+    border: none;
+    text-align: center;
+}
+/* Flex container for select/input/label */
+#connect_form > div:first-of-type { /* Target only the first div holding inputs */
+     margin-bottom: 15px; /* More space below inputs */
+     display: flex;
+     flex-wrap: wrap;
+     justify-content: center;
+     align-items: center;
+     gap: 10px; /* Space between flex items */
+}
+#connect_form select,
+#connect_form input[type="text"] {
+    margin: 0; /* Reset margin, gap handles spacing */
+    flex: 1 1 150px; /* Allow grow, shrink, base width */
+    max-width: 220px;
+}
+#connect_form label {
+    margin: 0; /* Reset margin */
+    white-space: nowrap;
+    color: white;
+    flex-shrink: 0; /* Don't let label shrink */
+}
+#connect_form label input[type="checkbox"] {
+     vertical-align: middle;
+     margin-left: 4px;
+}
+/* Container for the buttons */
+#connect_form .connect-form-buttons {
+    margin-top: 10px;
+}
+
+
+/* --- Config/Info Buttons --- */
+.config-info-buttons {
+    text-align: center;
+    margin-bottom: 20px; /* More space below this section */
+}
+
+/* --- Node Table Area --- */
+#list_link {
+    /* Container div, no specific styles needed unless for overall padding */
+}
+
+/* Outer table holding node sections */
+.fxwidth {
+    width: 75%; /* Use more width */
+    max-width: 800px; /* Slightly larger max width */
+    margin: 0 auto;
+    border: none;
+    background-color: transparent;
+    border-spacing: 0; /* Ensure no space between cells */
+    border-collapse: collapse;
+}
+/* The direct cell holding each node's content */
+.fxwidth > tbody > tr > td.node-table-container-cell {
+    border: none;
+    padding: 0 0 25px 0; /* Only bottom padding for spacing BETWEEN nodes */
+    background-color: transparent;
+    display: block; /* Ensure TR/TD behaves block-like for spacing */
+}
+
+/* Wrapper for enabling horizontal scroll on inner tables */
+.table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    border: 1px solid #aaa;
+    border-radius: 6px;
+    margin: 0 auto; /* Center wrapper if outer container is wider */
+}
+
+/* Inner tables for node data */
+.gridtable, .gridtable-large,
+.node-table-detailed, .node-table-compact {
+    width: 100%; /* Fill the wrapper */
+    margin: 0; /* No margin inside wrapper */
+    border-collapse: collapse;
+    table-layout: auto; /* Content determines width */
+    background-color: #f0f8ff; /* AliceBlue - light background for tables */
+}
+.table-wrapper table {
+    margin-bottom: 0; /* Override default table margin */
+    border-radius: 5px; /* Match wrapper radius slightly */
+    overflow: hidden; /* Clip content to rounded corners */
+}
+
+
+/* Table Headers and Cells within node tables */
+.gridtable th, .gridtable-large th,
+.node-table-detailed th, .node-table-compact th {
+    padding: 8px 10px;
+    text-align: center;
+    border: 1px solid #ccc; /* Lighter border inside table */
+    border-width: 0 0 1px 1px; /* Bottom and left border */
+    background-color: #d0e0f0; /* Slightly darker blue for headers */
+    font-weight: bold;
+    white-space: nowrap; /* Prevent headers wrapping */
+}
+.gridtable th:first-child, .gridtable-large th:first-child,
+.node-table-detailed th:first-child, .node-table-compact th:first-child {
+    border-left-width: 0; /* No left border on first header */
+}
+
+
+.gridtable td, .gridtable-large td,
+.node-table-detailed td, .node-table-compact td {
+    padding: 7px 10px;
+    text-align: left;
+    border: 1px solid #ddd; /* Lightest border for cells */
+    border-width: 0 0 1px 1px; /* Bottom and left border */
+    vertical-align: middle; /* Align cell content vertically */
+}
+.gridtable td:first-child, .gridtable-large td:first-child,
+.node-table-detailed td:first-child, .node-table-compact td:first-child {
+    border-left-width: 0; /* No left border on first cell */
+}
+
+
+/* Node Table Title Header */
+.table-title-header {
+    padding: 10px;
+    font-size: 1.3em;
+    background-color: #b0c4de; /* LightSteelBlue - Distinct title background */
+    color: #101040; /* Darker blue text */
+    border-bottom: 2px solid #888 !important; /* Stronger bottom border, override defaults */
+    border-left-width: 0 !important; /* Ensure no left border */
+}
+.table-title-header i { font-style: normal; }
+
+/* Node Table Sub-links */
+.table-title-sublinks {
+    font-size: 0.8em; /* Relative to parent TH */
+    font-weight: normal;
+    display: block; /* Each link potentially on new line */
+    margin-top: 5px;
+    line-height: 1.4;
+}
+.table-title-sublinks a {
+    margin: 0 6px;
+    white-space: nowrap;
+}
+
+/* Initializing Row */
+.initializing-row td {
+    text-align: center !important; /* Override default left align */
+    padding: 15px !important; /* More padding */
+    font-style: italic;
+    color: #555;
+    background-color: #f8f8f8 !important; /* Distinct background */
+    border-left-width: 0 !important; /* Full width */
+}
+
+/* Table Row Striping (from original CSS) */
+.even-row { background: #e0ffff; } /* Lighter Cyan */
+.odd-row { background: #d0fafa; } /* Slightly darker */
+.even-row td { background-color: #e0ffff !important; } /* Ensure override */
+.odd-row td { background-color: #d0fafa !important; } /* Ensure override */
+
+
+/* --- HamClock Iframe --- */
+.hamclock-container {
+    text-align:center;
+    margin: 25px auto; /* More margin and center */
+    max-width: 98%;
+}
+.hamclock-container iframe {
+    width: 100%;
+    max-width: 800px;
+    height: auto;
+    aspect-ratio: 800 / 480;
+    border: 1px solid #aaa;
+    display: block;
+    margin: 0 auto;
+    background-color: #eee; /* Background while loading */
+}
+
+
+/* --- Footer Area --- */
+.footer-area {
+    text-align: center;
+    margin-top: 30px; /* More space above footer */
+    padding: 15px 10px;
+    border-top: 1px solid #aaa;
+    font-size: 0.9em;
+    line-height: 1.6; /* More spacing for footer lines */
+    color: #333; /* Dark gray text */
+}
+.footer-area #spinny {
+    display: inline-block;
+    margin-right: 10px;
+    font-weight: bold;
+}
+.footer-area p { /* Style paragraphs in the footer */
+    margin: 8px 0;
+}
+.footer-area .login-status {
+    /* Inherits .footer-area styles, add specifics if needed */
+}
+.footer-area .error-message {
+    color: #a94442; /* Bootstrap danger color */
+    background-color: #f2dede; /* Light pink */
+    border: 1px solid #ebccd1;
+    padding: 10px;
+    border-radius: 4px;
+    display: inline-block; /* Don't take full width */
+    margin-top: 10px;
+    font-weight: bold;
+}
+
+
+/* === Media Queries for Responsive Layout === */
+
+/* -- Tablet / Smaller Desktop -- */
+@media (max-width: 768px) {
+    body { font-size: 10px; }
+
+    .fxwidth { width: 100%; padding: 0 3px; } /* Use full width, minimal padding */
+
+     /* Connect form input stacking */
+    #connect_form > div:first-of-type {
+        flex-direction: column;
+        gap: 8px; /* Adjust gap for column */
+    }
+     #connect_form select,
+     #connect_form input[type="text"],
+     #connect_form label {
+        width: 95%; /* Use more width */
+        max-width: none; /* Remove max-width */
+        margin: 0; /* Use gap */
+        flex: 1 1 auto; /* Reset flex basis */
+     }
+     /* Override inline styles on form inputs if necessary */
+     #connect_form input[type="text"][style] {
+         font-size: 1em !important;
+         width: 95% !important;
+     }
+     #connect_form label[style] {
+          font-size: 1em !important;
+     }
+     /* Stack connect form buttons */
+     #connect_form .connect-form-buttons input[type="button"] {
+         display: block;
+         width: 85%;
+         margin: 8px auto; /* Auto margins center block elements */
+         padding: 10px 15px; /* Ensure tappable */
+     }
+      hr.button-separator { margin: 15px auto; width: 85%; }
+
+
+    /* Table adjustments */
+    .gridtable th, .gridtable-large th,
+    .node-table-detailed th, .node-table-compact th {
+        font-size: 0.9em;
+        padding: 6px 8px;
+    }
+     .gridtable td, .gridtable-large td,
+    .node-table-detailed td, .node-table-compact td {
+        font-size: 0.95em;
+        padding: 6px 8px;
+        vertical-align: top; /* Use top align on mobile for long text */
+    }
+
+     /* Title adjustments */
+     .table-title-header { font-size: 1.15em; padding: 8px; }
+     .table-title-sublinks { font-size: 0.75em; }
+     .table-title-sublinks a { margin: 2px 4px; display: inline-block; } /* Allow wrapping */
+
+     /* Larger, tappable buttons */
+     input[type="button"], input[type="submit"], select {
+        padding: 10px 15px;
+        font-size: 1em;
+     }
+}
+
+/* -- Small Phones -- */
+@media (max-width: 480px) {
+     body { font-size: 14px; }
+
+     .welcome-message { font-size: 0.95em; padding: 10px; }
+
+     #connect_form { padding: 10px; }
+     #connect_form > div:first-of-type { gap: 5px; }
+     #connect_form .connect-form-buttons input[type="button"] { width: 90%; }
+     hr.button-separator { margin: 12px auto; width: 90%; }
+
+     .gridtable th, .gridtable-large th,
+     .node-table-detailed th, .node-table-compact th {
+        font-size: 0.85em;
+        padding: 5px 6px;
+     }
+     .gridtable td, .gridtable-large td,
+     .node-table-detailed td, .node-table-compact td {
+        font-size: 0.9em;
+        padding: 5px 6px;
+     }
+
+      .table-title-header { font-size: 1.05em; padding: 7px; }
+      .table-title-sublinks { font-size: 0.7em; }
+
+      .footer-area { font-size: 0.85em; padding: 10px 5px;}
+}

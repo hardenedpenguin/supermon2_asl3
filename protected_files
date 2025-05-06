@@ -1,0 +1,14 @@
+These files are protected and will not be overwritten
+except when asked at initial setup.
+
+/srv/http/supermon2/allmon.ini
+/srv/http/supermon2/user_files/controlpanel.ini
+/srv/http/supermon2/user_files/favorites.ini
+/srv/http/supermon2/user_files/global.inc
+/srv/http/supermon2/user_files/authusers.ini
+/srv/http/supermon2/.htaccess
+/srv/http/supermon2/.htpasswd
+/usr/local/sbin/supermon/node_info.ini
+
+ALL files in the user_files directory are
+protected if they do not previously exist.
