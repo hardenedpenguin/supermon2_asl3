@@ -1,54 +1,172 @@
 // js/supermon_header.js
 
 $(document).ready(function() {
+    // Cache common selectors
+    const $loginLink = $('#loginlink');
+    const $logoutLink = $('#logoutlink');
+    const $connectForm = $('#connect_form');
+    const $loginDialog = $('#login'); // Assuming #login is the login dialog container
 
-    var hideLoginLink = false;
-    if (hideLoginLink) {
-        $('#loginlink').hide();
+    // These inputs are central to many operations
+    const $localnodeInput = $('#localnode');
+    const $nodeInput = $('#node'); // Often used for remote node or command parameters
+    const $permCheckbox = $('#perm_checkbox');
+
+    // --- Helper Functions ---
+
+    // Helper for opening windows (simple, no node params in URL but uses localnode for window name)
+    function openWindowSimple(baseUrl, windowNamePrefix, windowSize) {
+        return function(event) {
+            event.preventDefault();
+            const localnodeVal = $localnodeInput.val() || 'unknown';
+            const url = baseUrl;
+            const windowName = `${windowNamePrefix}${localnodeVal}`;
+            const myWindow = window.open(url, windowName, windowSize);
+            if (myWindow && typeof myWindow.moveTo === 'function') {
+                myWindow.moveTo(20, 20);
+            }
+        };
     }
 
-    // Initial UI state based on login status
+    // Helper for opening windows that need localnode as a URL parameter
+    function openWindowWithLocalNode(baseUrl, windowNamePrefix, windowSize, paramName = 'node') {
+        return function(event) {
+            event.preventDefault();
+            const localnodeVal = $localnodeInput.val();
+            if (!localnodeVal) {
+                alertify.error("Local node must be selected or available.");
+                return;
+            }
+            const url = `${baseUrl}?${paramName}=${encodeURIComponent(localnodeVal)}`;
+            const windowName = `${windowNamePrefix}${localnodeVal}`;
+            const myWindow = window.open(url, windowName, windowSize);
+            if (myWindow && typeof myWindow.moveTo === 'function') {
+                myWindow.moveTo(20, 20);
+            }
+        };
+    }
+
+    // Helper for opening windows that need 'node' (from $nodeInput) and 'localnode' as URL parameters
+    function openWindowWithNodeAndLocalNode(baseUrl, windowNamePrefix, windowSize) {
+        return function(event) {
+            event.preventDefault();
+            const nodeVal = $nodeInput.val();
+            const localnodeVal = $localnodeInput.val();
+
+            if (!localnodeVal) {
+                alertify.error("Local node must be selected or available.");
+                return;
+            }
+            // Note: nodeVal (from $nodeInput) might be optional for some scripts, they should handle it.
+            const url = `${baseUrl}?node=${encodeURIComponent(nodeVal)}&localnode=${encodeURIComponent(localnodeVal)}`;
+            const windowName = `${windowNamePrefix}${localnodeVal}`;
+            const myWindow = window.open(url, windowName, windowSize);
+            if (myWindow && typeof myWindow.moveTo === 'function') {
+                myWindow.moveTo(20, 20);
+            }
+        };
+    }
+
+    // Helper for server actions with confirmation
+    function performServerAction(actionConfig) {
+        // actionConfig: {
+        //   phpFile: string,
+        //   confirmMsg: string | function(localnode, node, buttonId),
+        //   successMsgHandler: function(result, buttonId, localnode, node), (optional)
+        //   failMsg: string,
+        //   noActionMsg: string | function(localnode, node, buttonId),
+        //   dataBuilder: function(buttonId, localnode, node),
+        //   requiresLocalNode: boolean (default: true)
+        // }
+        return function() {
+            const buttonId = this.id;
+            const localnode = $localnodeInput.val();
+            const node = $nodeInput.val(); // Value from the general 'node' input field
+
+            if (actionConfig.requiresLocalNode !== false && !localnode) {
+                alertify.error("Local node must be selected or available.");
+                return;
+            }
+
+            const confirmMessage = (typeof actionConfig.confirmMsg === 'function') ?
+                actionConfig.confirmMsg(localnode, node, buttonId) :
+                actionConfig.confirmMsg;
+
+            alertify.confirm(confirmMessage, (e) => {
+                if (e) {
+                    const ajaxData = actionConfig.dataBuilder(buttonId, localnode, node);
+                    $.ajax({
+                        url: actionConfig.phpFile,
+                        data: ajaxData,
+                        type: 'post',
+                        success: function(result) {
+                            if (actionConfig.successMsgHandler) {
+                                actionConfig.successMsgHandler(result, buttonId, localnode, node);
+                            } else {
+                                alertify.success(result);
+                            }
+                        },
+                        error: function(jqXHR, textStatus) {
+                            alertify.error(`${actionConfig.failMsg}: ${textStatus}`);
+                        }
+                    });
+                } else {
+                    const noActionMessage = (typeof actionConfig.noActionMsg === 'function') ?
+                        actionConfig.noActionMsg(localnode, node, buttonId) :
+                        actionConfig.noActionMsg;
+                    alertify.error(noActionMessage);
+                }
+            });
+        };
+    }
+
+    // --- Initial UI state based on login status ---
     if (supermonConfig.isLoggedIn) {
-        $('#loginlink').hide();
-        if ($('#logoutlink').length) {
-            $('#logoutlink').show().find('span').append(' ' + supermonConfig.username);
+        $loginLink.hide();
+        if ($logoutLink.length) {
+            // Ensure username is HTML-escaped if it could contain special characters
+            const safeUsername = $('<div/>').text(supermonConfig.username).html();
+            $logoutLink.show().find('span').append(` ${safeUsername}`);
         }
-        $('#connect_form').show();
+        $connectForm.show();
     } else {
-        $('#connect_form').hide();
-        $('#logoutlink').hide();
-        $('#loginlink').show();
+        $connectForm.hide();
+        $logoutLink.hide();
+        $loginLink.show();
     }
 
     // --- Event Handlers for Logged-In Users ---
     if (supermonConfig.isLoggedIn) {
 
-        $('#logoutlink').click(function(event) {
+        $logoutLink.click(function(event) {
             event.preventDefault();
-            var user = supermonConfig.username;
-            alertify.success("<p style=\"font-size:28px;\"><b>Goodbye " + user + "!</b></p>");
+            const user = supermonConfig.username; // Assume username is safe or escape it if displayed raw
+            alertify.success(`<p style="font-size:28px;"><b>Goodbye ${$('<div/>').text(user).html()}!</b></p>`);
 
-            $.post("logout.php", "", function(response) {
-                if (response.substr(0, 5) != 'Sorry') {
-                    sleep(2000).then(() => {
-                        window.location.reload();
-                    });
-                } else {
-                    alertify.error("Logout failed. Please try again.");
-                }
-            }).fail(function() {
-                alertify.error("Logout request failed. Server error.");
-            });
+            $.post("logout.php", "")
+                .done(function(response) {
+                    const responseText = (typeof response === 'string') ? response.trim() : '';
+                    if (responseText && !responseText.toLowerCase().startsWith('sorry')) {
+                        sleep(2000).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        alertify.error(responseText || "Logout failed. Please try again.");
+                    }
+                })
+                .fail(function() {
+                    alertify.error("Logout request failed. Server error.");
+                });
         });
 
         $('#connect, #monitor, #permanent, #localmonitor').click(function() {
-            var button = this.id;
-            var localNode = $('#localnode').val();
-            var remoteNode = $('#node').val();
-            var perm = $('#perm_checkbox:checked').length ? $('#perm_checkbox:checked').val() : '';
+            const button = this.id;
+            const localNode = $localnodeInput.val();
+            const remoteNode = $nodeInput.val();
+            const perm = $permCheckbox.is(':checked') ? $permCheckbox.val() : '';
 
-            if (!remoteNode || remoteNode.length === 0) {
-                alertify.error('Please enter the remote node number you want node ' + localNode + ' to connect with.');
+            if (!remoteNode) {
+                alertify.error(`Please enter the remote node number you want node ${localNode || 'your node'} to connect with.`);
                 return;
             }
             if (!localNode) {
@@ -58,30 +176,21 @@ $(document).ready(function() {
 
             $.ajax({
                 url: 'connect.php',
-                data: {
-                    'remotenode': remoteNode,
-                    'perm': perm,
-                    'button': button,
-                    'localnode': localNode
-                },
+                data: { remotenode: remoteNode, perm: perm, button: button, localnode: localNode },
                 type: 'post',
-                success: function(result) {
-                    alertify.success(result);
-                },
-                error: function(jqXHR, textStatus, errorThrown) {
-                    alertify.error("Connect request failed: " + textStatus);
-                }
+                success: function(result) { alertify.success(result); },
+                error: function(jqXHR, textStatus) { alertify.error(`Connect request failed: ${textStatus}`); }
             });
         });
 
         $('#disconnect').click(function() {
-            var button = this.id;
-            var localNode = $('#localnode').val();
-            var remoteNode = $('#node').val();
-            var perm = $('#perm_checkbox:checked').length ? $('#perm_checkbox:checked').val() : '';
+            const button = this.id; // 'disconnect'
+            const localNode = $localnodeInput.val();
+            const remoteNode = $nodeInput.val();
+            const perm = $permCheckbox.is(':checked') ? $permCheckbox.val() : '';
 
-            if (!remoteNode || remoteNode.length === 0) {
-                alertify.error('Please enter the remote node number you want node ' + localNode + ' to disconnect from.');
+            if (!remoteNode) {
+                alertify.error(`Please enter the remote node number you want node ${localNode || 'your node'} to disconnect from.`);
                 return;
             }
             if (!localNode) {
@@ -89,317 +198,135 @@ $(document).ready(function() {
                 return;
             }
 
-            alertify.confirm("Disconnect " + remoteNode + " from " + localNode + "?",
-                function(e) {
-                    if (e) {
-                        $.ajax({
-                            url: 'disconnect.php',
-                            data: {
-                                'remotenode': remoteNode,
-                                'perm': perm,
-                                'button': button,
-                                'localnode': localNode
-                            },
-                            type: 'post',
-                            success: function(result) {
-                                alertify.success(result);
-                            },
-                            error: function(jqXHR, textStatus, errorThrown) {
-                                alertify.error("Disconnect request failed: " + textStatus);
-                            }
-                        });
-                    } else {
-                        return;
-                    }
-                });
+            alertify.confirm(`Disconnect ${remoteNode} from ${localNode}?`, function(e) {
+                if (e) {
+                    $.ajax({
+                        url: 'disconnect.php',
+                        data: { remotenode: remoteNode, perm: perm, button: button, localnode: localNode },
+                        type: 'post',
+                        success: function(result) { alertify.success(result); },
+                        error: function(jqXHR, textStatus) { alertify.error(`Disconnect request failed: ${textStatus}`); }
+                    });
+                }
+            });
         });
 
-        $('#controlpanel').click(function(event) {
+        $('#controlpanel').click(openWindowWithLocalNode("controlpanel.php", "ControlPanel", 'height=560, width=1000'));
+        $('#favoritespanel').click(openWindowWithLocalNode("favorites.php", "FavoritesPanel", 'height=500, width=800'));
+        $('#stats').click(openWindowWithLocalNode("stats.php", "AllStarStatistics", 'height=560, width=1400'));
+        
+        $('#database').click(openWindowWithNodeAndLocalNode("database.php", "Database", 'height=560, width=950'));
+        $('#rptstats').click(openWindowWithNodeAndLocalNode("rptstats.php", "RptStatistics", 'height=800, width=900'));
+        $('#openbanallow').click(openWindowWithNodeAndLocalNode("node-ban-allow-intro.php", "Ban-Allow", 'height=700, width=750'));
+        $('#opensimpleusb').click(openWindowWithNodeAndLocalNode("simpleusb-control-intro.php", "Simpleusb-tune-menu ", 'height=700, width=1000'));
+
+        $('#astlog').click(openWindowSimple("astlog.php", "AsteriskLog", 'height=560, width=1300'));
+        $('#cpustats').click(openWindowSimple("cpustats.php", "CPUstatistics", 'height=760, width=1000'));
+        $('#astnodes').click(openWindowSimple("astnodes.php", "AstNodes", 'height=560, width=750'));
+        $('#extnodes').click(openWindowSimple("extnodes.php", "ExtNodes", 'height=560, width=850'));
+        $('#linuxlog').click(openWindowSimple("linuxlog.php", "LinuxLog", 'height=560, width=1300'));
+        $('#irlplog').click(openWindowSimple("irlplog.php", "IRLPLog", 'height=560, width=1100'));
+        $('#webacclog').click(openWindowSimple("webacclog.php", "WebAccessLog", 'height=560, width=1400'));
+        $('#weberrlog').click(openWindowSimple("weberrlog.php", "WebErrorLog", 'height=560, width=1400'));
+        $('#openpigpio').click(openWindowSimple("pi-gpio.php", "Pi-GPIO", 'height=900, width=900'));
+        $('#smlog').click(openWindowSimple("smlog.php", "SMLog", 'height=560, width=1200'));
+
+        $('#astlookup').click(function(event) {
             event.preventDefault();
-            var localnodeVal = $('#localnode').val();
+            const nodeVal = $nodeInput.val();
+            const localnodeVal = $localnodeInput.val();
+            const perm = $permCheckbox.is(':checked') ? $permCheckbox.val() : '';
+
             if (!localnodeVal) {
                 alertify.error("Local node must be selected or available.");
                 return;
             }
-            var url = "controlpanel.php?node=" + localnodeVal;
-            var windowName = "ControlPanel" + localnodeVal;
-            var windowSize = 'height=560, width=1000';
-            window.open(url, windowName, windowSize);
-        });
-
-        $('#favoritespanel').click(function(event) {
-            event.preventDefault();
-            var localnodeVal = $('#localnode').val();
-            if (!localnodeVal) {
-                alertify.error("Local node must be selected or available.");
+            if (!nodeVal) {
+                alertify.error(`Please enter a Callsign or Node number to look up on node ${localnodeVal}.`);
                 return;
             }
-            var url = "favorites.php?node=" + localnodeVal;
-            var windowName = "FavoritesPanel" + localnodeVal;
-            var windowSize = 'height=500, width=800';
-            window.open(url, windowName, windowSize);
-        });
-
-        $('#astlog').click(function(event) {
-            event.preventDefault();
-            var localnodeVal = $('#localnode').val() || 'unknown';
-            var url = "astlog.php";
-            var windowName = "AsteriskLog" + localnodeVal;
-            var windowSize = 'height=560, width=1300';
-            var myWindow = window.open(url, windowName, windowSize);
-            if (myWindow) {
+            const url = `astlookup.php?node=${encodeURIComponent(nodeVal)}&localnode=${encodeURIComponent(localnodeVal)}&perm=${encodeURIComponent(perm)}`;
+            const windowName = `AstLookup${localnodeVal}`;
+            const windowSize = 'height=500,width=1000';
+            const myWindow = window.open(url, windowName, windowSize);
+            if (myWindow && typeof myWindow.moveTo === 'function') {
                 myWindow.moveTo(20, 20);
             }
         });
 
-        $('#stats').click(function(event) {
-            event.preventDefault();
-            var localnodeVal = $('#localnode').val();
-            if (!localnodeVal) {
-                alertify.error("Local node must be selected or available.");
-                return;
-            }
-            var url = "stats.php?node=" + localnodeVal;
-            var windowName = "AllStarStatistics" + localnodeVal;
-            var windowSize = 'height=560, width=1400';
-            var myWindow = window.open(url, windowName, windowSize);
-            if (myWindow) {
-                myWindow.moveTo(20, 20);
-            }
-        });
+        const genericActionConfig = {
+            failMsgBase: "request failed",
+            noActionMsgBase: "No action performed",
+            dataBuilder: (buttonId, localnode, node) => ({ button: buttonId, localnode: localnode, node: node }) // 'node' is from $nodeInput
+        };
+        
+        $('#astreload').click(performServerAction({
+            ...genericActionConfig,
+            phpFile: 'ast_reload.php',
+            confirmMsg: (localnode) => `Execute the Asterisk "iax2, rpt, & extensions Reload" for node - ${localnode || 'N/A'}?`,
+            failMsg: "Reload request failed",
+            noActionMsg: "No reload performed.",
+            requiresLocalNode: true
+        }));
 
-        $('#astreload').click(function() {
-            var button = this.id;
-            var node = $('#node').val();
-            var localnode = $('#localnode').val();
-
-            if (!localnode) {
-                alertify.error("Local node must be selected or available.");
-                return;
-            }
-
-            alertify.confirm("Execute the Asterisk \"iax2, rpt, & extensions Reload\" for node - " + localnode,
-                function(e) {
-                    if (e) {
-                        $.ajax({
-                            url: 'ast_reload.php',
-                            data: {
-                                'node': node,
-                                'localnode': localnode,
-                                'button': button
-                            },
-                            type: 'post',
-                            success: function(result) {
-                                alertify.success(result);
-                            },
-                            error: function(jqXHR, textStatus, errorThrown) {
-                                alertify.error("Reload request failed: " + textStatus);
-                            }
-                        });
-                    } else {
-                        alertify.error("No reload performed");
-                    }
-                });
-        });
-
-        $('#reboot').click(function() {
-            var button = this.id;
-            var node = $('#node').val();
-            var localnode = $('#localnode').val();
-
-            alertify.confirm("Perform a full Reboot of the AllStar server?<br><br>You can only Reboot the main server from Supermon, not remote servers.",
-                function(e) {
-                    if (e) {
-                        $.ajax({
-                            url: 'reboot.php',
-                            data: {
-                                'node': node,
-                                'localnode': localnode,
-                                'button': button
-                            },
-                            type: 'post',
-                            success: function(result) {
-                                alertify.success(result);
-                            },
-                            error: function(jqXHR, textStatus, errorThrown) {
-                                alertify.error("Reboot request failed: " + textStatus);
-                            }
-                        });
-                    } else {
-                        alertify.error("NO Reboot performed");
-                    }
-                });
-        });
-
-        $('#cpustats').click(function(event) {
-            event.preventDefault();
-            var localnodeVal = $('#localnode').val() || 'unknown';
-            var url = "cpustats.php";
-            var windowName = "CPUstatistics" + localnodeVal;
-            var windowSize = 'height=760, width=1000';
-            var myWindow = window.open(url, windowName, windowSize);
-            if (myWindow) {
-                myWindow.moveTo(20, 20);
-            }
-        });
-
-        $('#database').click(function(event) {
-            event.preventDefault();
-            var node = $('#node').val();
-            var localnode = $('#localnode').val();
-            if (!localnode) {
-                alertify.error("Local node must be selected or available.");
-                return;
-            }
-            var url = "database.php?node=" + node + "&localnode=" + localnode;
-            var windowName = "Database" + localnode;
-            var windowSize = 'height=560, width=950';
-            var myWindow = window.open(url, windowName, windowSize);
-            if (myWindow) {
-                myWindow.moveTo(20, 20);
-            }
-        });
-
-        $('#astaron, #astaroff').click(function() {
-            var button = this.id;
-            var localnode = $('#localnode').val();
-            var confirmMsg = (button === 'astaroff') ?
+        $('#reboot').click(performServerAction({
+            ...genericActionConfig,
+            phpFile: 'reboot.php',
+            confirmMsg: "Perform a full Reboot of the AllStar server?<br><br>You can only Reboot the main server from Supermon, not remote servers.",
+            failMsg: "Reboot request failed",
+            noActionMsg: "Reboot not performed.",
+            requiresLocalNode: false // Reboot may not require a specific local node selected
+        }));
+        
+        const astarOnOffActionConfig = {
+            phpFile: 'astaronoff.php',
+            confirmMsg: (localnode, node, buttonId) => (buttonId === 'astaroff') ?
                 "Perform Shutdown of AllStar system software?" :
-                "Perform Startup of AllStar system software?";
-            var errorMsg = (button === 'astaroff') ?
-                "NO Action performed" :
-                "NO action performed";
+                "Perform Startup of AllStar system software?",
+            failMsg: "Asterisk control request failed",
+            noActionMsg: (localnode, node, buttonId) => (buttonId === 'astaroff') ? "Shutdown not performed." : "Startup not performed.",
+            dataBuilder: (buttonId, localnode) => ({ 'button': buttonId, 'localnode': localnode }),
+            requiresLocalNode: true // Assuming localnode is needed by astaronoff.php
+        };
+        $('#astaron').click(performServerAction(astarOnOffActionConfig));
+        $('#astaroff').click(performServerAction(astarOnOffActionConfig));
 
-            alertify.confirm(confirmMsg,
-                function(e) {
-                    if (e) {
-                        $.ajax({
-                            url: 'astaronoff.php',
-                            data: {
-                                'button': button,
-                                'localnode': localnode
-                            },
-                            type: 'post',
-                            success: function(result) {
-                                alertify.success(result);
-                            },
-                            error: function(jqXHR, textStatus, errorThrown) {
-                                alertify.error("Asterisk control request failed: " + textStatus);
-                            }
-                        });
-                    } else {
-                        alertify.error(errorMsg);
-                    }
-                });
-        });
-
+        $('#fastrestart').click(performServerAction({
+            phpFile: 'fastrestart.php',
+            confirmMsg: (localnode) => `Perform a Fast-Restart of the AllStar system software at node ${localnode || 'N/A'}?`,
+            failMsg: "Fast Restart request failed",
+            noActionMsg: "Fast Restart not performed.",
+            dataBuilder: (buttonId, localnode) => ({ 'button': buttonId, 'localnode': localnode }),
+            requiresLocalNode: true
+        }));
+        
         $('#dtmf').click(function() {
-            var button = this.id;
-            var node = $('#node').val();
-            var localnode = $('#localnode').val();
+            const button = this.id; // 'dtmf'
+            const dtmfCommand = $nodeInput.val(); // DTMF command is entered in the #node field
+            const localnode = $localnodeInput.val();
 
             if (!localnode) {
                 alertify.error("Local node must be selected or available.");
                 return;
             }
-            if (!node || node.length === 0) {
-                alertify.error("Please enter a DTMF command to execute on node " + localnode + '.');
+            if (!dtmfCommand) {
+                alertify.error(`Please enter a DTMF command to execute on node ${localnode}.`);
                 return;
             }
 
             $.ajax({
                 url: 'dtmf.php',
-                data: {
-                    'node': node,
-                    'button': button,
-                    'localnode': localnode
-                },
+                data: { node: dtmfCommand, button: button, localnode: localnode },
                 type: 'post',
-                success: function(result) {
-                    alertify.success(result);
-                },
-                error: function(jqXHR, textStatus, errorThrown) {
-                    alertify.error("DTMF request failed: " + textStatus);
-                }
+                success: function(result) { alertify.success(result); },
+                error: function(jqXHR, textStatus) { alertify.error(`DTMF request failed: ${textStatus}`); }
             });
         });
 
-        $('#rptstats').click(function(event) {
-            event.preventDefault();
-            var node = $('#node').val();
-            var localnode = $('#localnode').val();
-            if (!localnode) {
-                alertify.error("Local node must be selected or available.");
-                return;
-            }
-            var url = "rptstats.php?node=" + node + "&localnode=" + localnode;
-            var windowName = "RptStatistics" + localnode;
-            var windowSize = 'height=800, width=900';
-            var myWindow = window.open(url, windowName, windowSize);
-            if (myWindow) {
-                myWindow.moveTo(20, 20);
-            }
-        });
-
-        $('#fastrestart').click(function() {
-            var button = this.id;
-            var localnode = $('#localnode').val();
-            if (!localnode) {
-                alertify.error("Local node must be selected or available.");
-                return;
-            }
-
-            alertify.confirm("Perform a Fast-Restart of the AllStar system software at node " + localnode + "?",
-                function(e) {
-                    if (e) {
-                        $.ajax({
-                            url: 'fastrestart.php',
-                            data: {
-                                'button': button,
-                                'localnode': localnode
-                            },
-                            type: 'post',
-                            success: function(result) {
-                                alertify.success(result);
-                            },
-                            error: function(jqXHR, textStatus, errorThrown) {
-                                alertify.error("Fast Restart request failed: " + textStatus);
-                            }
-                        });
-                    } else {
-                        alertify.error("NO action performed");
-                    }
-                });
-        });
-
-        $('#astlookup').click(function(event) {
-            event.preventDefault();
-            var button = this.id;
-            var node = $('#node').val();
-            var perm = $('#perm_checkbox:checked').length ? $('#perm_checkbox:checked').val() : '';
-            var localnode = $('#localnode').val();
-
-            if (!localnode) {
-                alertify.error("Local node must be selected or available.");
-                return;
-            }
-            if (!node || node.length === 0) {
-                alertify.error('Please enter a Callsign or Node number to look up on node ' + localnode + '.');
-                return;
-            }
-            var url = "astlookup.php?node=" + node + "&localnode=" + localnode + "&perm=" + perm;
-            var windowName = "AstLookup" + localnode;
-            var windowSize = 'height=500,width=1000';
-            var myWindow = window.open(url, windowName, windowSize);
-            if (myWindow) {
-                myWindow.moveTo(20, 20);
-            }
-        });
-
         $('#map').click(function() {
-            var button = this.id;
-            var node = $('#node').val();
-            var localnode = $('#localnode').val();
+            const button = this.id;
+            const nodeParam = $nodeInput.val(); // Value from general #node input, its purpose for map is specific to bubblechart.php
+            const localnode = $localnodeInput.val();
 
             if (!localnode) {
                 alertify.error("Local node must be selected or available to view the map.");
@@ -408,157 +335,20 @@ $(document).ready(function() {
 
             $.ajax({
                 url: 'bubblechart.php',
-                data: {
-                    'node': node,
-                    'localnode': localnode,
-                    'button': button
-                },
+                data: { node: nodeParam, localnode: localnode, button: button },
                 type: 'post',
                 success: function(result) {
-                    const testArea = $('#test_area');
-                    if (testArea.length) {
-                        testArea.html(result);
-                        testArea.stop()
-                                .css('opacity', 1)
-                                .fadeIn(50)
-                                .delay(1000)
-                                .fadeOut(2000);
+                    const $testArea = $('#test_area');
+                    if ($testArea.length) {
+                        $testArea.html(result).stop(true, true).css('opacity', 1).fadeIn(50).delay(1000).fadeOut(2000);
                     } else {
                         console.warn("Target element #test_area not found for map result.");
-                        alertify.alert("Map Data (target #test_area missing)", "<pre>" + String(result) + "</pre>", null);
+                        const safeResult = $('<div/>').text(result).html(); // Escape result for safe display
+                        alertify.alert("Map Data (target #test_area missing)", `<pre>${safeResult}</pre>`);
                     }
                 },
-                error: function(jqXHR, textStatus, errorThrown) {
-                    alertify.error("Map request failed: " + textStatus);
-                }
+                error: function(jqXHR, textStatus) { alertify.error(`Map request failed: ${textStatus}`); }
             });
-        });
-
-        $('#astnodes').click(function(event) {
-            event.preventDefault();
-            var localnodeVal = $('#localnode').val() || 'unknown';
-            var url = "astnodes.php";
-            var windowName = "AstNodes" + localnodeVal;
-            var windowSize = 'height=560, width=750';
-            var myWindow = window.open(url, windowName, windowSize);
-            if (myWindow) {
-                myWindow.moveTo(20, 20);
-            }
-        });
-
-        $('#extnodes').click(function(event) {
-            event.preventDefault();
-            var localnodeVal = $('#localnode').val() || 'unknown';
-            var url = "extnodes.php";
-            var windowName = "ExtNodes" + localnodeVal;
-            var windowSize = 'height=560, width=850';
-            window.open(url, windowName, windowSize);
-        });
-
-        $('#linuxlog').click(function(event) {
-            event.preventDefault();
-            var localnodeVal = $('#localnode').val() || 'unknown';
-            var url = "linuxlog.php";
-            var windowName = "LinuxLog" + localnodeVal;
-            var windowSize = 'height=560, width=1300';
-            var myWindow = window.open(url, windowName, windowSize);
-            if (myWindow) {
-                myWindow.moveTo(20, 20);
-            }
-        });
-
-        $('#irlplog').click(function(event) {
-            event.preventDefault();
-            var localnodeVal = $('#localnode').val() || 'unknown';
-            var url = "irlplog.php";
-            var windowName = "IRLPLog" + localnodeVal;
-            var windowSize = 'height=560, width=1100';
-            var myWindow = window.open(url, windowName, windowSize);
-            if (myWindow) {
-                myWindow.moveTo(20, 20);
-            }
-        });
-
-        $('#webacclog').click(function(event) {
-            event.preventDefault();
-            var localnodeVal = $('#localnode').val() || 'unknown';
-            var url = "webacclog.php";
-            var windowName = "WebAccessLog" + localnodeVal;
-            var windowSize = 'height=560, width=1400';
-            var myWindow = window.open(url, windowName, windowSize);
-            if (myWindow) {
-                myWindow.moveTo(20, 20);
-            }
-        });
-
-        $('#weberrlog').click(function(event) {
-            event.preventDefault();
-            var localnodeVal = $('#localnode').val() || 'unknown';
-            var url = "weberrlog.php";
-            var windowName = "WebErrorLog" + localnodeVal;
-            var windowSize = 'height=560, width=1400';
-            var myWindow = window.open(url, windowName, windowSize);
-            if (myWindow) {
-                myWindow.moveTo(20, 20);
-            }
-        });
-
-        $('#openpigpio').click(function(event) {
-            event.preventDefault();
-            var localnodeVal = $('#localnode').val() || 'unknown';
-            var url = "pi-gpio.php";
-            var windowName = "Pi-GPIO" + localnodeVal;
-            var windowSize = 'height=900, width=900';
-            var myWindow = window.open(url, windowName, windowSize);
-            if (myWindow) {
-                myWindow.moveTo(20, 20);
-            }
-        });
-
-        $('#openbanallow').click(function(event) {
-            event.preventDefault();
-            var node = $('#node').val();
-            var localnode = $('#localnode').val();
-            if (!localnode) {
-                alertify.error("Local node must be selected or available.");
-                return;
-            }
-            var url = "node-ban-allow-intro.php?node=" + node + "&localnode=" + localnode;
-            var windowName = "Ban-Allow" + localnode;
-            var windowSize = 'height=700, width=750';
-            var myWindow = window.open(url, windowName, windowSize);
-            if (myWindow) {
-                myWindow.moveTo(20, 20);
-            }
-        });
-
-        $('#opensimpleusb').click(function(event) {
-            event.preventDefault();
-            var node = $('#node').val();
-            var localnode = $('#localnode').val();
-            if (!localnode) {
-                alertify.error("Local node must be selected or available.");
-                return;
-            }
-            var url = "simpleusb-control-intro.php?node=" + node + "&localnode=" + localnode;
-            var windowName = "Simpleusb-tune-menu " + localnode;
-            var windowSize = 'height=700, width=1000';
-            var myWindow = window.open(url, windowName, windowSize);
-            if (myWindow) {
-                myWindow.moveTo(20, 20);
-            }
-        });
-
-        $('#smlog').click(function(event) {
-            event.preventDefault();
-            var localnodeVal = $('#localnode').val() || 'unknown';
-            var url = "smlog.php";
-            var windowName = "SMLog" + localnodeVal;
-            var windowSize = 'height=560, width=1200';
-            var myWindow = window.open(url, windowName, windowSize);
-            if (myWindow) {
-                myWindow.moveTo(20, 20);
-            }
         });
 
     } // --- End of Event Handlers for Logged-In Users ---
@@ -566,28 +356,26 @@ $(document).ready(function() {
 
     // --- Event Handlers Available Regardless of Login State ---
 
-    // Click on table cell to populate connection form
-    $('table').on('click', 'td.nodeNum', function(event) {
-        const remoteNodeInput = $('#connect_form #node');
-        const localNodeInput = $('#connect_form #localnode');
+    // Click on table cell to populate connection form's main #node and #localnode inputs
+    $('table').on('click', 'td.nodeNum', function() {
+        if (!$connectForm.is(':visible')) {
+            return; // Don't populate if form isn't visible (i.e., user not logged in)
+        }
 
-        if ($('#connect_form').is(':visible')) {
-            if (remoteNodeInput.length) {
-                remoteNodeInput.val($(this).text().trim());
-            }
+        const clickedNodeNum = $(this).text().trim();
+        $nodeInput.val(clickedNodeNum); // Populates the main #node input
 
-            var tableId = $(this).closest('table').attr('id');
-            if (tableId) {
-                var idarr = tableId.split('_');
-                if (idarr.length > 1 && localNodeInput.length) {
-                    localNodeInput.val(idarr[1]);
-                }
+        const tableId = $(this).closest('table').attr('id');
+        if (tableId) {
+            const idParts = tableId.split('_');
+            if (idParts.length > 1 && idParts[1]) {
+                $localnodeInput.val(idParts[1]); // Populates the main #localnode input
             }
         }
     });
 
     // Show login dialog
-    $("#loginlink").click(function(event) {
+    $loginLink.click(function(event) {
         event.preventDefault();
         clearForm();
         showLogin();
@@ -596,62 +384,63 @@ $(document).ready(function() {
 }); // --- End of $(document).ready ---
 
 
-// --- Login Form Helper Functions ---
+// --- Login Form Helper Functions (can be outside document.ready if they don't rely on its scoped vars) ---
 
 function clearForm() {
-    const checkbox = document.getElementById("checkbox");
+    // Assuming login form has id "myform" and specific inputs "checkbox", "passwd"
+    const loginForm = document.getElementById("myform");
+    if (loginForm) {
+        loginForm.reset(); // Standard way to clear a form to its initial state
+        // If you need to truly blank fields rather than reset to initial values:
+        // $('#myform :input').not(':button, :submit, :reset, :hidden, :radio').val('');
+        // $('#myform input[type="checkbox"]').prop('checked', false);
+    }
+    const passwdField = document.getElementById("passwd");
+    if (passwdField) {
+        passwdField.type = "password"; // Ensure password field is masked
+    }
+    const checkbox = document.getElementById("checkbox"); // Show/Hide PW checkbox
     if (checkbox) {
         checkbox.checked = false;
-        const passwdField = document.getElementById("passwd");
-        if (passwdField) {
-            passwdField.type = "password";
-        }
     }
-
-    $('#myform :input')
-        .not(':button, :submit, :reset, :hidden, :radio')
-        .val('');
-    $('#myform input[type="checkbox"]').prop('checked', false);
 }
 
 function showPW() {
-    var x = document.getElementById("passwd");
-    var y = document.getElementById("user");
-    var checkbox = document.getElementById("checkbox");
+    const passwdField = document.getElementById("passwd");
+    const userField = document.getElementById("user");
+    const checkbox = document.getElementById("checkbox");
 
-    if (y && x && checkbox) {
-        if (y.value.trim()) {
-            if (x.type === "password") {
-                x.type = "text";
-                checkbox.checked = true;
-            } else {
-                x.type = "password";
-                checkbox.checked = false;
-            }
-        } else {
-            x.type = "password";
-            checkbox.checked = false;
-        }
+    if (!userField || !passwdField || !checkbox) {
+        console.warn("showPW: One or more required elements (user, passwd, checkbox) not found.");
+        return;
+    }
+
+    if (userField.value.trim()) { // Only toggle if username is entered
+        passwdField.type = (passwdField.type === "password") ? "text" : "password";
+        checkbox.checked = (passwdField.type === "text");
+    } else {
+        passwdField.type = "password";
+        checkbox.checked = false;
     }
 }
 
 function hideLogin() {
-    $('#login').hide();
+    $('#login').hide(); // Or use cached $loginDialog if defined globally or passed
 }
 
 function showLogin() {
-    $('#login').show();
-    const userField = $('#login #user');
-    if (userField.length) {
-        userField.focus();
+    $('#login').show(); // Or use cached $loginDialog
+    const $userField = $('#login #user'); // Login dialog specific user field
+    if ($userField.length) {
+        $userField.focus();
     }
 }
 
 function validate_login() {
-    var user = $("#user").val();
-    var passwd = $("#passwd").val();
+    const userVal = $("#user").val().trim(); // User input from login form
+    const passwdVal = $("#passwd").val();    // Password - usually not trimmed by client
 
-    if (!user.trim() || !passwd.trim()) {
+    if (!userVal || !passwdVal.trim()) { // Check if password is not just spaces
         alertify.error("Username and Password are required.");
         return false;
     }
@@ -659,29 +448,29 @@ function validate_login() {
     $.ajax({
         type: "POST",
         url: "login.php",
-        data: {
-            'user': user,
-            'passwd': passwd
-        },
+        data: { user: userVal, passwd: passwdVal }, // Send original password
         dataType: 'text',
         success: function(response) {
             hideLogin();
-            if (response && response.trim().substr(0, 5) != 'Sorry') {
-                alertify.success("<p style=\"font-size:28px;\"><b>Welcome " + user + "!</b></p>");
+            const responseText = (typeof response === 'string') ? response.trim() : '';
+            if (responseText && !responseText.toLowerCase().startsWith('sorry')) {
+                const safeUser = $('<div/>').text(userVal).html();
+                alertify.success(`<p style="font-size:28px;"><b>Welcome ${safeUser}!</b></p>`);
                 sleep(2000).then(() => {
                     window.location.reload();
                 });
             } else {
-                alertify.error(response.trim() || "Sorry, Login Failed!");
+                alertify.error(responseText || "Sorry, Login Failed!");
             }
         },
         error: function(jqXHR, textStatus, errorThrown) {
             hideLogin();
-            alertify.error("Login request failed: " + textStatus + (errorThrown ? " - " + errorThrown : ""));
+            let errorMsg = `Login request failed: ${textStatus}`;
+            if (errorThrown) errorMsg += ` - ${errorThrown}`;
+            alertify.error(errorMsg);
         }
     });
-
-    return false;
+    return false; // Prevent default form submission if this is an onsubmit handler
 }
 
 function sleep(ms) {
